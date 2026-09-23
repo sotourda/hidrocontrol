@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HidroControl BLE v2.0</title>
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans p-4 flex flex-col justify-between">
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="max-w-md mx-auto w-full bg-slate-900 rounded-3xl p-5 shadow-2xl border border-slate-800 space-y-5">
+        
+        <!-- ENCABEZADO Y CONEXIÓN -->
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div>
+                <h1 class="text-xl font-black tracking-tight text-cyan-400">💧 HidroControl BLE</h1>
+                <p id="txt-status" class="text-xs text-rose-400 font-bold mt-0.5">🔴 Desconectado</p>
+            </div>
+            <button id="btn-conectar" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-cyan-600/20">
+                Conectar Equipo
+            </button>
+        </div>
+
+        <!-- PERSISTENCIA / TRABAJO ANTERIOR -->
+        <div class="bg-slate-800/40 p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+            <span class="text-xs font-semibold text-slate-400">Trabajos:</span>
+            <div class="flex gap-2 w-2/3">
+                <button id="btn-cargar" class="w-1/2 bg-amber-600 hover:bg-amber-500 text-[11px] font-bold py-2 rounded-xl transition-all">Cargar Anterior</button>
+                <button id="btn-guardar" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-[11px] font-bold py-2 rounded-xl transition-all">Guardar Trabajo</button>
+            </div>
+        </div>
+
+        <!-- SELECTOR DE MODO -->
+        <div class="bg-slate-950 p-1.5 rounded-2xl grid grid-cols-2 gap-1 border border-slate-800">
+            <button id="btn-mode-manual" class="bg-slate-800 border border-slate-700 text-cyan-400 font-bold py-2.5 rounded-xl transition-all text-sm">
+                MANUAL
+            </button>
+            <button id="btn-mode-auto" class="bg-transparent text-slate-400 font-bold py-2.5 rounded-xl transition-all text-sm">
+                AUTOMÁTICO
+            </button>
+        </div>
+
+        <!-- DISPLAY GRANDE: SUMA TOTAL -->
+        <div class="bg-gradient-to-b from-slate-950 to-slate-900/50 p-5 rounded-3xl text-center border border-slate-800/80 shadow-inner">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Litros Totales Suministrados (Suma)</span>
+            <h2 id="lbl-total" class="text-5xl font-black text-cyan-400 font-mono tracking-tight">0.00 <span class="text-lg font-normal text-slate-500">L</span></h2>
+        </div>
+
+        <!-- SECCIÓN DE VÁLVULAS E INFORMACIÓN EN TIEMPO REAL -->
+        <div class="space-y-4">
+            
+            <!-- VÁLVULA IZQUIERDA (PIN 16) -->
+            <div class="bg-slate-800/50 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-bold text-slate-300">⬅️ Válvula Izquierda</span>
+                    <span id="badge-left" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20">Cerrada</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-center bg-slate-950/60 p-2.5 rounded-xl">
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Litros</span>
+                        <span id="liters-left" class="text-lg font-bold font-mono text-slate-200">0.00 L</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Caudal</span>
+                        <span id="lpm-left" class="text-lg font-bold font-mono text-slate-200">0.0 LPM</span>
+                    </div>
+                </div>
+                <!-- Input modo Auto Izquierdo -->
+                <div id="wrapper-target-left" class="hidden">
+                    <label class="text-[11px] text-slate-400 block mb-1">Objetivo Litros:</label>
+                    <input type="number" id="target-left" step="0.1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-sm text-cyan-400 font-bold focus:outline-none focus:border-cyan-500 font-mono" value="0.0">
+                </div>
+                <!-- Botón Manual Izquierdo -->
+                <button id="btn-action-left" class="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 font-bold py-2.5 rounded-xl text-xs transition-all active:scale-[0.98]">
+                    Abrir Válvula Izquierda
+                </button>
+            </div>
+
+            <!-- VÁLVULA DERECHA (PIN 17) -->
+            <div class="bg-slate-800/50 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-bold text-slate-300">➡️ Válvula Derecha</span>
+                    <span id="badge-right" class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20">Cerrada</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-center bg-slate-950/60 p-2.5 rounded-xl">
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Litros</span>
+                        <span id="liters-right" class="text-lg font-bold font-mono text-slate-200">0.00 L</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 block">Caudal</span>
+                        <span id="lpm-right" class="text-lg font-bold font-mono text-slate-200">0.0 LPM</span>
+                    </div>
+                </div>
+                <!-- Input modo Auto Derecho -->
+                <div id="wrapper-target-right" class="hidden">
+                    <label class="text-[11px] text-slate-400 block mb-1">Objetivo Litros:</label>
+                    <input type="number" id="target-right" step="0.1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-sm text-cyan-400 font-bold focus:outline-none focus:border-cyan-500 font-mono" value="0.0">
+                </div>
+                <!-- Botón Manual Derecho -->
+                <button id="btn-action-right" class="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 font-bold py-2.5 rounded-xl text-xs transition-all active:scale-[0.98]">
+                    Abrir Válvula Derecha
+                </button>
+            </div>
+
+        </div>
+
+        <!-- REPETIR VOLUMEN (SOLO VISIBLE EN AUTOMÁTICO) -->
+        <button id="btn-repetir" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs tracking-wide transition-all shadow-md active:scale-95 hidden">
+            🔄 REPETIR / SUMINISTRAR VOLUMEN FIJADO
+        </button>
+
+        <!-- SECCIÓN DE CALIBRACIÓN DE PULSOS -->
+        <div class="border-t border-slate-800 pt-4 space-y-2">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">⚙️ Calibración Global</h3>
+            <div class="flex items-center gap-3">
+                <div class="w-2/3">
+                    <label class="text-[10px] text-slate-500 block">Pulsos por Litro (PPL):</label>
+                    <input type="number" id="input-ppl" step="0.1" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono font-bold" value="12.0">
+                </div>
+                <button id="btn-set-ppl" class="w-1/3 bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold py-2.5 rounded-lg text-xs mt-4 transition-all">
+                    Calibrar
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PIE DE PÁGINA -->
+    <div class="text-center text-[10px] text-slate-600 mt-4">
+        HidroControl Web Interface v2.0 • Web Bluetooth API
+    </div>
+
+    <!-- SCRIPT DE CONTROL ASÍNCRONO -->
+    <script>
+        // Mapeo estricto del Firmware ESP32
+        const SERVICE_UUID    = "d9730000-a12f-4f2c-9c67-1fbf5a1c0000";
+        const TELEM_CHAR_UUID = "d9730001-a12f-4f2c-9c67-1fbf5a1c0000";
+        const CTRL_CHAR_UUID  = "d9730002-a12f-4f2c-9c67-1fbf5a1c0000";
+        const CAL_CHAR_UUID   = "d9730003-a12f-4f2c-9c67-1fbf5a1c0000";
+
+        let chCtrl = null, chCal = null;
+        let isAutoMode = false;
+        let currentLeftOpen = false, currentRightOpen = false;
+
+        // Elementos DOM
+        const btnConectar = document.getElementById('btn-conectar');
+        const txtStatus = document.getElementById('txt-status');
+        const btnManual = document.getElementById('btn-mode-manual');
+        const btnAuto = document.getElementById('btn-mode-auto');
+        const wTargetLeft = document.getElementById('wrapper-target-left');
+        const wTargetRight = document.getElementById('wrapper-target-right');
+        const btnRepetir = document.getElementById('btn-repetir');
+
+        // Evento de Conexión BLE
+        btnConectar.addEventListener('click', async () => {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'HidroControl' }, { namePrefix: 'ESP32' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+                txtStatus.innerText = "⏳ Conectando...";
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                
+                const chTelem = await service.getCharacteristic(TELEM_CHAR_UUID);
+                chCtrl = await service.getCharacteristic(CTRL_CHAR_UUID);
+                chCal = await service.getCharacteristic(CAL_CHAR_UUID);
+
+	// Escuchar Telemetría Activa (JSON de tu firmware)
+	await chTelem.startNotifications();
+	chTelem.addEventListener('characteristicvaluechanged', manejarTelemetria);
+
+	txtStatus.innerText = "🟢 Conectado";
+	txtStatus.className = "text-xs text-emerald-400 font-bold mt-0.5";
+	btnConectar.classList.add('hidden');
+	} catch (err) {
+	console.error(err);
+	txtStatus.innerText = "🔴 Error/Desconectado";
+	}
+	});
+
+	// Receptor e intérprete de Telemetría (Procesa el JSON emitido por tu ESP32)
+	function manejarTelemetria(event) {
+	let decoder = new TextDecoder();
+	let rawStr = decoder.decode(event.target.value);
+	try {
+	let data = JSON.parse(rawStr);
+
+	// Actualizar Litros Individuales e LPM
+	let lLit = parseFloat(data.left.liters) || 0;
+	let rLit = parseFloat(data.right.liters) || 0;
+	
+	document.getElementById('liters-left').innerText = lLit.toFixed(2) + " L";
+	document.getElementById('lpm-left').innerText = (parseFloat(data.left.lpm) || 0).toFixed(1)
+	 + " LPM";
+	
+	document.getElementById('liters-right').innerText = rLit.toFixed(2) + " L";
+	document.getElementById('lpm-right').innerText = (parseFloat(data.right.lpm) || 
+	0).toFixed(1) + " LPM";
+
+	// Mostrar suma total en grande
+	document.getElementById('lbl-total').innerHTML = ${(lLit + rLit).toFixed(2)} <span 
+	class="text-lg font-normal text-slate-500">L</span>;
+
+	// Actualizar variables de estado internas
+	currentLeftOpen = data.left.open;
+	currentRightOpen = data.right.open;
+
+	// Modificar Badges estéticos
+	actualizarBadge('badge-left', 'btn-action-left', currentLeftOpen, "Izquierda");
+	actualizarBadge('badge-right', 'btn-action-right', currentRightOpen, "Derecha");
+
+	// Sincronizar calibración si viene en el JSON
+	if(data.ppl) document.getElementById('input-ppl').value = data.ppl;
+
+	} catch (e) {
+	console.warn("Error parseando JSON de telemetría.");
+	}
+	}
+	
+	function actualizarBadge(badgeId, buttonId, isOpen, side) {
+	const badge = document.getElementById(badgeId);
+	const btn = document.getElementById(buttonId);
+	if(isOpen) {
+	badge.innerText = "Abierta";
+	badge.className = "px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-
+	emerald-500/10 text-emerald-400 border border-emerald-500/20";
+	btn.innerText = Cerrar Válvula ${side};
+	btn.className = "w-full bg-rose-600/20 border border-rose-500 text-rose-400 font-
+	bold py-2.5 rounded-xl text-xs transition-all";
+	} else {
+	badge.innerText = "Cerrada";
+	badge.className = "px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-
+	500/10 text-rose-400 border border-rose-500/20";
+	btn.innerText = isAutoMode ? Iniciar Válvula ${side} : Abrir Válvula ${side};
+	btn.className = "w-full bg-slate-800 border border-slate-700 text-slate-300 font-bold 
+	py-2.5 rounded-xl text-xs transition-all";
+	}
+	}
+
+	// Envío Genérico de comandos en JSON estructurado hacia el ESP32
+	async function mandarComando(objetoJson) {
+	if(!chCtrl) return;
+	let str = JSON.stringify(objetoJson);
+	let encoder = new TextEncoder();
+	await chCtrl.writeValue(encoder.encode(str));
+	}
+
+	// Cambio visual de Modos (Manual / Automático)
+	btnManual.addEventListener('click', () => {
+	isAutoMode = false;
+	btnManual.className = "bg-slate-800 border border-slate-700 text-cyan-400 font-
+	bold py-2.5 rounded-xl transition-all text-sm";
+	btnAuto.className = "bg-transparent text-slate-400 font-bold py-2.5 rounded-xl 
+	transition-all text-sm";
+	wTargetLeft.classList.add('hidden');
+	wTargetRight.classList.add('hidden');
+	btnRepetir.classList.add('hidden');
+	mandarComando({ autoMode: false });
+	});
+
+	btnAuto.addEventListener('click', () => {
+	isAutoMode = true;
+	btnAuto.className = "bg-slate-800 border border-slate-700 text-cyan-400 font-bold 
+	py-2.5 rounded-xl transition-all text-sm";
+	btnManual.className = "bg-transparent text-slate-400 font-bold py-2.5 rounded-xl 
+	transition-all text-sm";
+	wTargetLeft.classList.remove('hidden');
+	wTargetRight.classList.remove('hidden');
+	btnRepetir.classList.remove('hidden');
+	mandarComando({ autoMode: true });
+	enviarObjetivos();
+	});
+
+	// Eventos dinámicos en inputs para cambiar litros objetivo a mitad de ejecución
+	function enviarObjetivos() {
+	let leftVal = parseFloat(document.getElementById('target-left').value) || 0;
+	let rightVal = parseFloat(document.getElementById('target-right').value) || 0;
+	mandarComando({ targetLeft: leftVal, targetRight: rightVal });
+	}
+	document.getElementById('target-left').addEventListener('input', enviarObjetivos);
+	document.getElementById('target-right').addEventListener('input', enviarObjetivos);
+
+	// Botones de Acción (Abrir/Cerrar)
+	document.getElementById('btn-action-left').addEventListener('click', () => {
+	if (isAutoMode) {
+	enviarObjetivos();
+	mandarComando({ action: "startLeft" });
+	} else {
+	mandarComando({ action: currentLeftOpen ? "closeLeft" : "openLeft" });
+	}
+	});
+
+	document.getElementById('btn-action-right').addEventListener('click', () => {
+	if (isAutoMode) {
+	enviarObjetivos();
+	mandarComando({ action: "startRight" });
+	} else {
+	mandarComando({ action: currentRightOpen ? "closeRight" : "openRight" });
+	}
+	});
+
+	// Función Repetir Ciclo del modo Automático
+	btnRepetir.addEventListener('click', () => {
+	enviarObjetivos();
+	mandarComando({ action: "startAll" });
+	});
+
+	// Almacenamiento no volátil en NVS
+	document.getElementById('btn-guardar').addEventListener('click', () => 
+	mandarComando({ storage: "save" }));
+	document.getElementById('btn-cargar').addEventListener('click', () => {
+	mandarComando({ storage: "load" });
+	
+	// Forzar cambio visual a automático para retomar el entorno guardado
+	setTimeout(() => btnAuto.click(), 200);
+	});
+
+	// Calibración manual
+	document.getElementById('btn-set-ppl').addEventListener('click', async () => {
+	if(!chCal) return;
+	let pplVal = parseFloat(document.getElementById('input-ppl').value) || 12.0;
+	let encoder = new TextEncoder();
+	await chCal.writeValue(encoder.encode(JSON.stringify({ setPPL: pplVal })));
+	alert("⚙️ Nuevo factor de calibración PPL enviado al ESP32.");
+	});
+
